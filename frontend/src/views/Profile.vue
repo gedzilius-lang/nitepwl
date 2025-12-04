@@ -8,21 +8,31 @@
         <span class="badge">{{ user.role }}</span>
       </div>
       
+      <div class="xp-container">
+        <div class="xp-info">
+          <span>Lvl {{ user.level }}</span>
+          <span>{{ user.xp }} XP</span>
+        </div>
+        <div class="xp-bar-bg"><div class="xp-bar-fill" :style="{width: (user.xp % 100) + '%'}"></div></div>
+      </div>
+
       <div class="stats">
         <div class="stat">
           <label>Balance</label>
           <div class="value">{{ user.niteBalance }} <small>NITE</small></div>
         </div>
-        <div class="stat">
-          <label>XP / Level</label>
-          <div class="value">{{ user.xp }} <small>Lvl {{ user.level }}</small></div>
-        </div>
       </div>
-
-      <button @click="refresh" class="refresh-btn">🔄 Refresh Data</button>
     </div>
 
-    <div v-else>Loading profile...</div>
+    <div v-if="history.length" class="history">
+      <h3>📜 Recent Activity</h3>
+      <div v-for="tx in history" :key="tx.id" class="tx-row">
+        <span :class="['tx-type', tx.type]">{{ tx.type }}</span>
+        <span class="tx-amount">{{ tx.amount }} NITE</span>
+      </div>
+    </div>
+
+    <button @click="refresh" style="margin-top:20px; padding:10px; width:100%;">🔄 Refresh</button>
   </div>
 </template>
 
@@ -30,32 +40,31 @@
 import axios from 'axios'
 
 export default {
-  data() { return { user: null } },
-  async mounted() {
-    await this.refresh()
-  },
+  data() { return { user: null, history: [] } },
+  async mounted() { await this.refresh() },
   methods: {
     async refresh() {
       try {
-        // In v7 Demo, we force the demo user state
-        const res = await axios.post('/api/users/demo')
-        this.user = res.data
-      } catch (e) {
-        console.error(e)
-      }
+        const userRes = await axios.post('/api/users/demo')
+        this.user = userRes.data
+        const histRes = await axios.get(`/api/nitecoin/history/${this.user.id}`)
+        this.history = histRes.data
+      } catch (e) { console.error(e) }
     }
   }
 }
 </script>
 
 <style scoped>
-.profile-card { background: #1a1a1a; padding: 2rem; border-radius: 12px; border: 1px solid #333; max-width: 400px; }
+.profile-card { background: #1a1a1a; padding: 2rem; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .badge { background: #333; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; text-transform: uppercase; }
-.stats { display: flex; gap: 2rem; margin-bottom: 2rem; }
-.stat label { display: block; color: #888; font-size: 0.9rem; margin-bottom: 4px; }
+.stats { display: flex; gap: 2rem; margin-top: 1.5rem; }
 .stat .value { font-size: 1.5rem; font-weight: bold; color: #fff; }
-.stat small { font-size: 0.9rem; color: #8a2be2; }
-.refresh-btn { background: #222; color: #aaa; border: 1px solid #444; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; }
-.refresh-btn:hover { background: #333; color: white; }
+.xp-bar-bg { height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top:5px; }
+.xp-bar-fill { height: 100%; background: linear-gradient(90deg, #8a2be2, #ff00ff); }
+.history { background: #1a1a1a; border-radius: 8px; border: 1px solid #333; padding: 10px; }
+.tx-row { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #222; }
+.tx-type.spend { color: #ff4444; font-weight: bold; text-transform: uppercase;}
+.tx-type.earn { color: #00c851; font-weight: bold; text-transform: uppercase;}
 </style>

@@ -12,18 +12,19 @@ import { Venue } from './modules/venues/venue.entity';
 import { MarketItem } from './modules/market/market-item.entity';
 import { NitecoinTransaction } from './modules/nitecoin/nitecoin-transaction.entity';
 import { PosTransaction } from './modules/pos/pos-transaction.entity';
+import { FeedItem } from './modules/feed/feed-item.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
+      host: process.env.DB_HOST || 'localhost',
       port: 5432,
       username: 'nite',
       password: 'nitepassword',
       database: 'nite_os',
-      entities: [User, Venue, MarketItem, NitecoinTransaction, PosTransaction],
-      synchronize: true, // v7 Dev Mode - Auto Sync Schema
+      entities: [User, Venue, MarketItem, NitecoinTransaction, PosTransaction, FeedItem],
+      synchronize: true, 
     }),
     UsersModule,
     FeedModule,
