@@ -1,5 +1,5 @@
 <template>
-  <h1>🔥 Live NiteOS Feed</h1>
+  <h1>Nitelife Feed</h1>
   <div v-for="item in items" :key="item.id" class="card">
     <h3>{{ item.title }}</h3>
     <p>{{ item.body }}</p>
