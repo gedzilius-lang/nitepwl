@@ -1,3 +1,14 @@
+#!/bin/bash
+set -e
+
+PROJECT_DIR="$HOME/nitepwl"
+FRONTEND_DIR="$PROJECT_DIR/frontend/src/views"
+
+echo ">>> [Phase 11] Implementing Final Manual Radio Controls..."
+
+# 1. FRONTEND: MANUAL PLAYER (Vue)
+# This design features two independent buttons and the mandatory mobile start overlay.
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="pwl-radio-body">
     <header>
@@ -237,3 +248,15 @@ button:disabled { opacity: 0.3; cursor: not-allowed; animation: none; }
 #toast { visibility: hidden; min-width: 200px; background: #222; color: #fff; padding: 12px; position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); z-index: 100; text-align: center; font-size: 11px; border-bottom: 2px solid var(--accent-primary); opacity: 0; transition: opacity 0.5s; }
 footer { text-align: center; padding: 40px; color: #444; font-size: 10px; }
 </style>
+VUE
+
+echo ">>> Pushing Final Player Fix..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Fix: Final Player Configuration with Manual Controls"
+git push origin main
+
+echo "--------------------------------------------------------"
+echo "✅ FIX APPLIED."
+echo "👉 Run 'nite deploy' on your VPS to go live."
+echo "--------------------------------------------------------"
