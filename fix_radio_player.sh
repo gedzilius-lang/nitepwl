@@ -1,3 +1,11 @@
+#!/bin/bash
+set -e
+
+FRONTEND_DIR="$HOME/nitepwl/frontend/src/views"
+
+echo ">>> [Phase 9] Porting 'Rock-Solid' Player Logic..."
+
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="radio-page">
     <h1>📻 Nite Radio</h1>
@@ -238,3 +246,16 @@ export default {
 
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 </style>
+VUE
+
+echo ">>> Pushing Fix to GitHub..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Fix: Apply Rock-Solid Radio Logic from PDF"
+git push origin main
+
+echo "--------------------------------------------------------"
+echo "✅ Player Logic Updated."
+echo "👉 1. Run 'nite deploy' on the server."
+echo "👉 2. Clear Browser Cache & Test."
+echo "--------------------------------------------------------"
