@@ -1,3 +1,80 @@
+#!/bin/bash
+set -e
+
+PROJECT_DIR="$HOME/nitepwl"
+FRONTEND_DIR="$PROJECT_DIR/frontend/src/views"
+SERVER_USER="nite_dev"
+SERVER_HOST="srv925512.hstgr.cloud"
+
+echo ">>> [CRITICAL REPAIR] Restoring API and deploying FINAL stable Radio."
+
+# ==========================================
+# 1. SERVER FIX: NGINX RESTORE (Guarantees API access)
+# ==========================================
+cat << 'EOF' > /tmp/nginx_api_restore.sh
+#!/bin/bash
+set -e
+
+CONF="/etc/nginx/sites-available/os.peoplewelike.club.conf"
+
+echo ">>> Overwriting Nginx site config for stable API access..."
+cat << 'NGINX' > "$CONF"
+server {
+    listen 80;
+    server_name os.peoplewelike.club;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name os.peoplewelike.club;
+
+    ssl_certificate /etc/letsencrypt/live/os.peoplewelike.club/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/os.peoplewelike.club/privkey.pem;
+
+    root /opt/nite-os-v7/frontend/dist;
+    index index.html;
+
+    # --- API PROXY (FIXED) ---
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # --- HLS STREAM ACCESS (Restored for Player) ---
+    location /hls/ {
+        alias /var/www/hls/;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "no-cache";
+        types {
+            application/vnd.apple.mpegurl m3u8;
+            video/mp2t ts;
+        }
+    }
+
+    # Frontend Routing (SPA Fallback)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+NGINX
+
+echo ">>> Testing and restarting Nginx..."
+nginx -t && systemctl restart nginx
+echo ">>> API access should now be restored."
+EOF
+
+# Push and Execute API Restore
+scp /tmp/nginx_api_restore.sh "$SERVER_USER@$SERVER_HOST":/tmp/
+ssh -t "$SERVER_USER@$SERVER_HOST" "sudo bash /tmp/nginx_api_restore.sh"
+rm /tmp/nginx_api_restore.sh
+
+# 2. FRONTEND DOWNGRADE: Deploy the Final Two-Player Design
+echo ">>> [2/2] Deploying Final Stable Player UI..."
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="simple-radio-container">
     <h1>📻 Nite Radio - Final Stable Stream</h1>
@@ -94,3 +171,16 @@ h1 { margin-bottom: 20px; }
 :deep(.video-js) { width: 100% !important; height: auto !important; aspect-ratio: 16/9; }
 .small-note { margin-top: 20px; color: #888; font-size: 0.9rem; }
 </style>
+VUE
+
+# 3. COMMIT AND DEPLOY
+echo ">>> Committing and Deploying system repair..."
+cd "$PROJECT_DIR"
+git add .
+git commit -m "Fix: Final Stable Radio Player Deployment"
+git push origin main
+ssh "$SERVER_USER@$SERVER_HOST" "sudo nite deploy"
+
+echo "--------------------------------------------------------"
+echo "✅ DEPLOYMENT COMPLETE."
+echo "--------------------------------------------------------"
