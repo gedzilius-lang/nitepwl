@@ -15,21 +15,25 @@ export class PosService {
   ) {}
 
   async processCheckout(venueId: string, userId: string, amount: number, items: any) {
-    // 1. Validate User Balance
+    // 1. Validate Balance
     const user = await this.usersService.findOne(userId);
     if (!user) throw new Error('User not found');
     if (user.niteBalance < amount) throw new Error('Insufficient NITE balance');
 
-    // 2. Charge User (Negative amount for spend)
+    // 2. Charge User
     await this.nitecoinService.createTransaction(userId, venueId, -amount, 'spend');
 
-    // 3. Record POS Receipt
+    // 3. Record Transaction
     const tx = this.repo.create({
       venueId,
       userId,
       totalNite: amount,
       itemsSnapshot: items || []
     });
+    
+    // 4. Grant XP
+    await this.usersService.addXp(userId, amount);
+
     return this.repo.save(tx);
   }
 
