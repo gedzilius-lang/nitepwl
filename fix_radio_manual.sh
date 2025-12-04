@@ -1,3 +1,73 @@
+#!/bin/bash
+set -e
+
+PROJECT_DIR="$HOME/nitepwl"
+FRONTEND_DIR="$PROJECT_DIR/frontend/src/views"
+
+echo ">>> [Phase 10] Applying Manual Radio Controls & Fixes..."
+
+# ==========================================
+# 1. BACKEND: Fix Metadata JSON (Sanitize Quotes)
+# ==========================================
+cat << 'EOF' > /tmp/backend_safe_json.sh
+#!/bin/bash
+set -e
+
+# 1. Update Liquidsoap to escape quotes in titles
+cat << 'LIQ' > /etc/liquidsoap/autodj.liq
+#!/usr/bin/liquidsoap
+set("log.stdout", false)
+set("log.file", true)
+set("log.file.path", "/var/log/liquidsoap/radio.log")
+set("init.allow_root", true)
+
+audio = playlist("/var/www/autodj/music")
+audio = mksafe(audio)
+
+# JSON Escaping Function
+def escape_json(s) =
+  string.replace(pattern='\"', by='\\\\"', s)
+end
+
+def on_metadata(m) =
+  artist = escape_json(m["artist"])
+  title = escape_json(m["title"])
+  duration = m["duration"]
+  duration = if duration == "" then "0" else duration end
+  start_time = time() 
+
+  json = '{"artist": "#{artist}", "title": "#{title}", "duration": #{duration}, "start": #{start_time}}'
+  system("echo '#{json}' > /var/www/html/now_playing.json")
+end
+
+audio = on_metadata(on_metadata, audio)
+
+output.file(%wav, "/dev/stdout", audio)
+LIQ
+chmod +x /etc/liquidsoap/autodj.liq
+
+# 2. Ensure CORS Headers in Nginx (Crucial for Visualizer)
+CONF="/etc/nginx/sites-available/os.peoplewelike.club.conf"
+if ! grep -q "Access-Control-Allow-Origin" "$CONF"; then
+  sed -i '/alias \/var\/www\/hls\/autodj\/;/a \        add_header Access-Control-Allow-Origin *;' $CONF
+  sed -i '/alias \/var\/www\/hls\/live\/;/a \        add_header Access-Control-Allow-Origin *;' $CONF
+fi
+
+# 3. Restart
+systemctl restart nginx
+systemctl restart liquidsoap-radio
+EOF
+
+# Deploy Backend Fixes
+scp /tmp/backend_safe_json.sh nite_dev@srv925512.hstgr.cloud:/tmp/
+ssh -t nite_dev@srv925512.hstgr.cloud "sudo bash /tmp/backend_safe_json.sh"
+rm /tmp/backend_safe_json.sh
+
+
+# ==========================================
+# 2. FRONTEND: Manual Player (Vue)
+# ==========================================
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="pwl-radio-body">
     <header>
@@ -316,3 +386,15 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 footer { text-align: center; padding: 40px 20px; color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 @media (max-width: 600px) { header, .player-toolbar { padding: 15px 20px; } .now-playing { max-width: 150px; } }
 </style>
+VUE
+
+echo ">>> Pushing Fix to GitHub..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Feat: Manual Player Controls with Mobile Overlay"
+git push origin main
+
+echo "--------------------------------------------------------"
+echo "✅ FIX APPLIED."
+echo "👉 Run 'nite deploy' to update the server."
+echo "--------------------------------------------------------"
