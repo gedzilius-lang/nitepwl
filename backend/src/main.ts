@@ -6,6 +6,6 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableCors();
   await app.listen(3000);
-  console.log('NiteOS v7 Backend running on port 3000');
+  console.log('NiteOS v7 Backend - Auto-Deployed at 06:42:23');
 }
 bootstrap();
