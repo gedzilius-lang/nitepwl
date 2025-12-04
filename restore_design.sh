@@ -1,3 +1,11 @@
+#!/bin/bash
+set -e
+
+FRONTEND_DIR="$HOME/nitepwl/frontend/src/views"
+
+echo ">>> [Phase 9] Restoring 'Backup' Radio Design (PeopleWeLike)..."
+
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="pwl-radio-body">
     <header>
@@ -320,3 +328,15 @@ footer { text-align: center; padding: 40px 20px; color: var(--dim); font-size: 1
 /* MOBILE */
 @media (max-width: 600px) { header, .player-toolbar { padding: 15px 20px; } .now-playing { max-width: 150px; } }
 </style>
+VUE
+
+echo ">>> [Git] Pushing Restored Design..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Design: Restore PeopleWeLike Radio Backup"
+git push origin main
+
+echo "--------------------------------------------------------"
+echo "✅ Design Restored."
+echo "👉 Run 'nite deploy' on your VPS to go live."
+echo "--------------------------------------------------------"
