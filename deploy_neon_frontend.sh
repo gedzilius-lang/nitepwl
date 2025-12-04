@@ -1,3 +1,11 @@
+#!/bin/bash
+set -e
+
+FRONTEND_DIR="$HOME/nitepwl/frontend/src/views"
+
+echo ">>> [Phase 8] Installing Neon Frontend..."
+
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="neon-radio">
     <div class="stage">
@@ -198,3 +206,16 @@ export default {
 
 @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(255, 0, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
 </style>
+VUE
+
+echo ">>> Frontend Upgraded. Deploying..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Feat: Implement Neon Radio Design"
+git push origin main
+nite deploy
+
+echo "--------------------------------------------------------"
+echo "✅ MISSION COMPLETE."
+echo "👉 Check: https://os.peoplewelike.club/radio"
+echo "--------------------------------------------------------"
