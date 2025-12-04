@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -e
+
+CMD="$1"
+shift || true
+
+case "$CMD" in
+  db)
+    SUB="$1"
+    shift || true
+    case "$SUB" in
+      reset)
+        echo "[nite] Resetting Docker DB stack (postgres, mongo, redis)..."
+        docker compose down -v || true
+        docker compose up -d postgres mongo redis
+        ;;
+      status)
+        echo "[nite] Docker services status:"
+        docker compose ps
+        ;;
+      *)
+        echo "Usage: nite db [reset|status]"
+        exit 1
+        ;;
+    esac
+    ;;
+  dev)
+    echo "[nite] Starting full dev stack via docker compose..."
+    docker compose up --build
+    ;;
+  logs)
+    echo "[nite] pm2 logs nite-backend"
+    pm2 logs nite-backend
+    ;;
+  restart)
+    echo "[nite] Restarting nite-backend via pm2..."
+    pm2 restart nite-backend
+    ;;
+  *)
+    echo "Nite CLI"
+    echo "Usage:"
+    echo "  nite dev             # docker compose up --build"
+    echo "  nite db reset        # reset DB containers"
+    echo "  nite db status       # show docker compose ps"
+    echo "  nite logs            # tail backend logs"
+    echo "  nite restart         # restart backend service"
+    ;;
+esac

@@ -1,0 +1,37 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { UsersModule } from './modules/users/users.module';
+import { VenuesModule } from './modules/venues/venues.module';
+import { NitecoinModule } from './modules/nitecoin/nitecoin.module';
+import { MarketModule } from './modules/market/market.module';
+import { FeedModule } from './modules/feed/feed.module';
+import { PosModule } from './modules/pos/pos.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+
+@Module({
+  imports: [
+    // Postgres connection
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: 'nite',
+      password: 'nitepassword',
+      database: 'nite_os',
+      autoLoadEntities: true,
+      synchronize: true, // OK for dev, turn off in real prod
+    }),
+
+    UsersModule,
+    VenuesModule,
+    NitecoinModule,
+    MarketModule,
+    FeedModule,
+    PosModule,
+    AuthModule,
+    AnalyticsModule,
+  ],
+})
+export class AppModule {}
