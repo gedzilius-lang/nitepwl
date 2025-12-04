@@ -1,3 +1,85 @@
+#!/bin/bash
+set -e
+
+echo ">>> [Radio] Applying 'Rock-Solid' Playback Fix..."
+
+# ==========================================
+# 1. SERVER FIX: FORCE CORS & MIME TYPES
+# ==========================================
+cat << 'EOF' > /tmp/nginx_cors_fix.sh
+#!/bin/bash
+set -e
+
+# Overwrite the site config to guarantee CORS headers are present
+cat << 'NGINX' > /etc/nginx/sites-available/os.peoplewelike.club.conf
+server {
+    listen 80;
+    server_name os.peoplewelike.club;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name os.peoplewelike.club;
+
+    ssl_certificate /etc/letsencrypt/live/os.peoplewelike.club/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/os.peoplewelike.club/privkey.pem;
+
+    root /opt/nite-os-v7/frontend/dist;
+    index index.html;
+
+    # --- FIXED HLS ROUTES (WITH CORS) ---
+    location /hls/ {
+        alias /var/www/hls/;
+        add_header Cache-Control no-cache;
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Expose-Headers Content-Length;
+        
+        # Force MIME types for HLS
+        types {
+            application/vnd.apple.mpegurl m3u8;
+            video/mp2t ts;
+        }
+    }
+
+    # API Proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+    }
+
+    # Metadata
+    location /now_playing.json {
+        alias /var/www/html/now_playing.json;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "no-cache, no-store";
+        default_type application/json;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+NGINX
+
+# Restart Nginx to apply
+nginx -t && systemctl restart nginx
+echo ">>> Nginx CORS Headers Enforced."
+EOF
+
+scp /tmp/nginx_cors_fix.sh nite_dev@srv925512.hstgr.cloud:/tmp/
+ssh -t nite_dev@srv925512.hstgr.cloud "sudo bash /tmp/nginx_cors_fix.sh"
+rm /tmp/nginx_cors_fix.sh
+
+# ==========================================
+# 2. FRONTEND FIX: ROBUST PLAYER LOGIC
+# ==========================================
+FRONTEND_DIR="$HOME/nitepwl/frontend/src/views"
+
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="pwl-radio-body">
     <header>
@@ -239,3 +321,15 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
 footer { text-align: center; padding: 40px 20px; color: var(--dim); font-size: 10px; }
 </style>
+VUE
+
+echo ">>> [Git] Pushing Fix..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Fix: Enable CORS for HLS and Robust Player Logic"
+git push origin main
+
+echo "--------------------------------------------------------"
+echo "✅ FIX APPLIED."
+echo "👉 Run 'nite deploy' now."
+echo "--------------------------------------------------------"
