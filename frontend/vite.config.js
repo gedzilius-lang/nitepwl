@@ -7,5 +7,9 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3000'
     }
+  },
+  build: {
+    // Increase chunk size warning limit to 3MB (silences the warning)
+    chunkSizeWarningLimit: 3000
   }
 })
