@@ -14,6 +14,21 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
+  findOne(id: string) {
+    return this.usersRepository.findOneBy({ id });
+  }
+
+  async findByExternalId(externalId: string) {
+    return this.usersRepository.findOneBy({ externalId });
+  }
+
+  async adjustBalance(userId: string, amount: number) {
+    const user = await this.findOne(userId);
+    if (!user) throw new Error('User not found');
+    user.niteBalance += amount;
+    return this.usersRepository.save(user);
+  }
+
   async createDemoUser() {
     const existing = await this.usersRepository.findOneBy({ externalId: 'demo_admin' });
     if (existing) return existing;
