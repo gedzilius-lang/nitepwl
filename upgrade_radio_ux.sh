@@ -1,3 +1,75 @@
+#!/bin/bash
+set -e
+
+echo ">>> [Phase 8] Upgrading Radio UI/UX..."
+
+# ==========================================
+# 1. BACKEND: Metadata Exporter
+# ==========================================
+# We update Liquidsoap to write current song info to a JSON file
+cat << 'EOF' > /tmp/radio_metadata_fix.sh
+#!/bin/bash
+set -e
+
+# 1. Create status file and set permissions
+touch /var/www/html/radio_status.json
+chown liquidsoap:www-data /var/www/html/radio_status.json
+chmod 664 /var/www/html/radio_status.json
+
+# 2. Update Liquidsoap Config
+cat << 'LIQ' > /etc/liquidsoap/autodj.liq
+#!/usr/bin/liquidsoap
+set("log.stdout", false)
+set("log.file", true)
+set("log.file.path", "/var/log/liquidsoap/radio.log")
+set("init.allow_root", true)
+
+# Music Source
+audio = playlist("/var/www/autodj/music")
+audio = mksafe(audio)
+
+# Metadata Handler (Writes JSON to webroot)
+def on_metadata(m) =
+  # Extract tags, default to "Unknown" if missing
+  artist = m["artist"]
+  title = m["title"]
+  
+  # Handle missing tags gracefully
+  json = '{"artist": "#{artist}", "title": "#{title}"}'
+  
+  # Write to file
+  system("echo '#{json}' > /var/www/html/radio_status.json")
+end
+
+audio = on_metadata(on_metadata, audio)
+
+# Output Pipe
+output.file(
+  %wav, 
+  "/dev/stdout", 
+  audio
+)
+LIQ
+
+# 3. Restart Service
+chmod +x /etc/liquidsoap/autodj.liq
+systemctl restart liquidsoap-radio
+
+echo ">>> Backend Metadata System Updated."
+EOF
+
+# Deploy Backend Changes
+scp /tmp/radio_metadata_fix.sh nite_dev@srv925512.hstgr.cloud:/tmp/
+ssh -t nite_dev@srv925512.hstgr.cloud "sudo bash /tmp/radio_metadata_fix.sh"
+rm /tmp/radio_metadata_fix.sh
+
+# ==========================================
+# 2. FRONTEND: Visualizer & Controls
+# ==========================================
+
+FRONTEND_DIR="$HOME/nitepwl/frontend/src/views"
+
+cat << 'VUE' > "$FRONTEND_DIR/Radio.vue"
 <template>
   <div class="radio-page">
     <h1>📻 Nite Radio</h1>
@@ -270,3 +342,16 @@ export default {
 /* Force video.js to fill container */
 :deep(.video-js) { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
 </style>
+VUE
+
+echo ">>> Frontend Updated. Pushing to Production..."
+cd "$HOME/nitepwl"
+git add .
+git commit -m "Feat: Radio Visualizer, Metadata, and PIP"
+git push origin main
+
+echo "--------------------------------------------------------"
+echo "✅ UPGRADE COMPLETE."
+echo "👉 1. Run 'nite deploy' to update the server."
+echo "👉 2. Refresh browser."
+echo "--------------------------------------------------------"
