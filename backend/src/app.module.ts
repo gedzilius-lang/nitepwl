@@ -24,7 +24,7 @@ import { FeedItem } from './modules/feed/feed-item.entity';
       password: 'nitepassword',
       database: 'nite_os',
       entities: [User, Venue, MarketItem, NitecoinTransaction, PosTransaction, FeedItem],
-      synchronize: true, 
+      synchronize: true,
     }),
     UsersModule,
     FeedModule,
