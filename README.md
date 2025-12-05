@@ -1,93 +1,91 @@
-# �� NiteOS v7 - Modular Monolith Platform
+# NiteOS – Core Venue OS & Nitecoin Economy
 
-**Status:** Production Ready (v7.0.0)  
-**Live URL:** [https://os.peoplewelike.club](https://os.peoplewelike.club)  
-**Admin:** [https://os.peoplewelike.club/admin](https://os.peoplewelike.club/admin)  
+**Status:** v0.1 – Core architecture online, features under active development
+**Live:** [https://os.peoplewelike.club](https://os.peoplewelike.club)
 
-## 📌 Project Overview
-NiteOS v7 is a consolidated "Modular Monolith" designed to replace the legacy microservices architecture. It powers a venue management system with an integrated economy, live radio streaming, and user gamification.
+NiteOS is a compact “OS for nightlife venues”. It runs:
+
+* User identities (NiteTap / bracelets / cards)
+* Venue profiles
+* An internal currency (Nitecoin)
+* POS & Market logic (what can be bought, at which price)
+* Feed & basic analytics
+
+There is **no media stack** inside NiteOS. Any media/live content is handled by separate infrastructure and — if ever needed — only embedded as a simple external link or iframe on the frontend.
 
 ---
 
-## 🏗️ Architecture
+## 1. Architecture Overview
 
-### **1. Backend (NestJS)**
+### 1.1 Backend (NestJS Monolith)
+
 * **Location:** `/backend`
-* **Port:** `3000`
-* **Database:** PostgreSQL (TypeORM)
+* **Port:** `3000` (proxied behind nginx)
+* **Database:** PostgreSQL via TypeORM
 * **Modules:**
-    * `Users`: Profile management, XP, Leveling.
-    * `Nitecoin`: Internal economy ledger (Earn/Spend).
-    * `POS`: Point-of-Sale logic for venues to charge users.
-    * `Market`: Item listings and purchasing logic.
-    * `Feed`: Dynamic news and event system.
-    * `Radio`: Metadata handling for the streaming engine.
+    * **Users**: NiteOS users, NiteTap linkage, XP, level, Nitecoin balance, flags.
+    * **Venues**: Venue registry: slug, title, city, status, config.
+    * **Nitecoin**: Ledger for earning/spending Nitecoin, transaction records per user/venue.
+    * **POS**: Checkout logic: what was bought, at which price, by which user/staff/venue.
+    * **Market**: Item catalog per venue (CHF price, Nitecoin price, active flags).
+    * **Feed**: Simple posts & announcements shown in the app.
+    * **Auth**: JWT-based authentication and role handling (user, staff, venue admin, Nitecore admin).
+    * **Analytics**: Event logs & metrics (stored in Mongo).
 
-### **2. Frontend (Vue 3 + Vite)**
+The backend is intentionally monolithic. If we ever need microservices, they will be split out of these modules later.
+
+---
+
+### 1.2 Frontend (Vue 3 + Vite SPA)
+
 * **Location:** `/frontend`
-* **Dev Port:** `5173`
-* **Features:**
-    * **Radio Player:** "Rock-Solid" logic switching between Live (OBS) and Auto-DJ. Includes Visualizer and PiP.
-    * **Profile:** Real-time balance, XP progress bar, transaction history.
-    * **Admin Dashboard:** Interface to post news/events to the feed.
-    * **Market:** Storefront for purchasing items with Nitecoin.
+* **Dev port:** `5173`
+* Deployed as a static SPA behind nginx.
 
-### **3. Radio Station (Media Engine)**
-* **Stack:** Nginx (RTMP Module) + Liquidsoap + FFmpeg.
-* **Flow:**
-    * **Auto-DJ:** Liquidsoap reads MP3s -> Pipes to FFmpeg -> Pushes to Nginx RTMP.
-    * **Live:** OBS pushes to Nginx RTMP (`/live`).
-    * **Distribution:** Nginx segments stream into HLS (`.m3u8` + `.ts`) for web playback.
-* **Paths:**
-    * Music Upload: `/var/www/autodj/music`
-    * HLS Output: `/var/www/hls/`
-* **Streaming Config:**
-    * Server: `rtmp://os.peoplewelike.club/live` (or IP: `31.97.126.86`)
-    * Key: `obs`
+Screens:
 
----
+* **Feed** – `/`
+    * Displays feed items from `/api/feed`.
+* **Market** – `/market`
+    * Venue selector.
+    * Item list with CHF + Nitecoin prices from `/api/market/:venueId/items`.
+* **Profile** – `/profile`
+    * Shows “current user”:
+        * NiteTap ID (if linked)
+        * Nitecoin balance
+        * XP & level
+        * Basic recent activity.
+* **(Planned) Admin** – `/admin`
+    * Manage venues, items, staff, and basic configuration.
 
-## 🛠️ Operational Guide (God Mode)
-
-### **Development Workflow**
-1.  **Start Local Environment:**
-    ```bash
-    nite dev
-    # Starts Docker (Postgres/Redis), Backend (Watch), and Frontend (Vite)
-    ```
-2.  **Deploy to Production:**
-    ```bash
-    git add .
-    git commit -m "Your message"
-    git push origin main
-    # GitHub Action triggers auto-deploy. 
-    # If it fails, run 'nite deploy' locally to force it.
-    ```
-
-### **Server Management**
-* **SSH Access:** `nite ssh` (Connects as `nite_dev`)
-* **Logs:** `nite logs` (Streams backend logs)
-* **Status:** `nite status` (Checks PM2/Nginx/DB)
-* **Manual Deploy:** `nite deploy` (Pulls code & rebuilds on server)
-
-### **Disaster Recovery**
-* **Database Backups:** Located at `/var/backups/postgres/` (Runs daily at 3 AM).
-* **Infrastructure Configs:** Saved in `/ops/configs/` (Nginx, Liquidsoap, Systemd).
+No media player UI is present in this project.
 
 ---
 
-## ✅ Completed Features (v7 Roadmap)
-- [x] **Infrastructure:** VPS setup, Firewall (UFW), SSL (Certbot), Auto-Updates.
-- [x] **Economy:** Nitecoin transaction ledger & XP gamification engine.
-- [x] **Radio:** Live/Auto-DJ switching, Metadata JSON API, Visualizer.
-- [x] **UI/UX:** "Neon" & "Classic" designs implemented, Mobile responsive.
-- [x] **DevOps:** CI/CD Pipeline via GitHub Actions.
+### 1.3 Databases & Infra
 
-## 🔭 Future Aims
-1.  **Authentication:** Replace "Demo User" with real JWT Auth (Login/Register).
-2.  **Media Uploads:** Allow Admins to upload images for Feed/Market items (S3 or Local).
-3.  **Payment Gateway:** Integrate Stripe/PayPal to buy Nitecoin.
-4.  **Chat:** Connect the Socket.io frontend to a real NestJS Gateway.
+* **PostgreSQL** (`nite_os`)
+    * Core schema: users, venues, market_items, nitecoin_transactions, pos_transactions, feed_items.
+* **Redis**
+    * Sessions, rate limiting, simple counters (active users, etc.).
+* **MongoDB**
+    * Event logs and analytics snapshots.
+
+* **nginx**
+    * `https://os.peoplewelike.club/` → frontend SPA
+    * `https://os.peoplewelike.club/api/*` → NestJS backend on `localhost:3000`
+
+No streaming-related locations or ports are configured on this machine.
 
 ---
-*Documentation generated automatically by NiteOS Ops.*
+
+## 2. Operations
+
+### 2.1 One-command bootstrap
+
+On a fresh Ubuntu VPS:
+
+```bash
+git clone git@github.com:gedzilius-lang/nitepwl.git /opt/nite-os
+cd /opt/nite-os
+bash launch.sh
