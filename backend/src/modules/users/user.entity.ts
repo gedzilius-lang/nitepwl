@@ -7,14 +7,14 @@ export class User {
 
   @Index({ unique: true })
   @Column({ type: 'varchar', nullable: true })
-  externalId: string;
+  username: string; // Changed from externalId for clarity, acts as login
+
+  @Column({ type: 'varchar', select: false, nullable: true }) 
+  passwordHash: string; // Hidden by default
 
   @Index({ unique: true })
   @Column({ type: 'varchar', nullable: true })
   nitetapId: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  apiKey: string;
 
   @Column({ type: 'int', default: 1 })
   level: number;
@@ -27,9 +27,6 @@ export class User {
 
   @Column({ type: 'varchar', default: 'user' })
   role: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  venueId: string;
 
   @CreateDateColumn()
   createdAt: Date;
