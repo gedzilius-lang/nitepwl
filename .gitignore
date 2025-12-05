@@ -1,4 +1,15 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
+build/
+
+# Environment variables (SECURITY RISK if uploaded)
 .env
+.env.local
+.env.*
+
+# IDE files
+.vscode/
 .DS_Store
